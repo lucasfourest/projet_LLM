@@ -1,0 +1,8 @@
+By order of priority
+
+- train and aggregate with PET k(=3) models/pattern
+- add classical training and compare with it (for the same number of training examples, i.e 32)
+- add priming (REAL few shot learning, works with LARGE SCALE LLMs) and compare with it
+- implement iPET and observe improvements (?)
+- summarize comparisons with plots, analyze...
+- eventually: implement PET with several masks
