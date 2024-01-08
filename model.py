@@ -16,9 +16,9 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 
-class Classifier(nn.Module):
+class PETClassifier(nn.Module):
     def __init__(self, mlm,tokenizer,pvp):
-      super(Classifier, self).__init__()
+      super(PETClassifier, self).__init__()
       self.mlm = mlm # "masked language model"
       self.tokenizer = tokenizer
       self.id_pos, self.id_neg=self.tokenizer.encode(pvp.verbalizer.answer_pos,add_special_tokens=False,),\
@@ -48,9 +48,11 @@ if __name__ == "__main__":
     raw_data = load_dataset("scikit-learn/imdb", split="train")
     raw_data=raw_data.shuffle()
     # model_name = "distilbert-base-uncased" 
-    model_name = "albert-base-v2" 
+    model_name = "bert-base-uncased" 
+    # model_name = "albert-base-v1" 
     # tokenizer=DistilBertTokenizer.from_pretrained(model_name, do_lower_case=True)
-    tokenizer=AlbertTokenizer.from_pretrained(model_name, do_lower_case=True)
+    tokenizer=BertTokenizer.from_pretrained(model_name, do_lower_case=True)
+    # tokenizer=AlbertTokenizer.from_pretrained(model_name, do_lower_case=True)
     pvp=PVP(1,1)
 
     # prepare specific pvp data
@@ -59,17 +61,18 @@ if __name__ == "__main__":
     examples_11, test_11 = Subset(dataset_11, range(32)),Subset(dataset_11, range(32, len(dataset_11)))
     # set up loaders
     data_collator = DataCollator(dataset_11.tokenizer)
-    bsize=8
+    bsize=4
     examples_11_loader = DataLoader(examples_11, batch_size=bsize, collate_fn=data_collator) # train for 1 batch
     test_11_loader = DataLoader(test_11, batch_size=16, collate_fn=data_collator)
 
     # prepare model 
     # mlm = DistilBertForMaskedLM.from_pretrained(model_name)
-    mlm = AlbertForMaskedLM.from_pretrained(model_name)
-    model=Classifier(mlm,tokenizer,pvp)
+    mlm = BertForMaskedLM.from_pretrained(model_name)
+    # mlm = AlbertForMaskedLM.from_pretrained(model_name)
+    model=PETClassifier(mlm,tokenizer,pvp)
 
     # PET
-    train_loss, train_acc, test_loss, test_acc=PET(model, examples_11_loader, test_11_loader,bsize=bsize, lr=1e-5)
+    train_loss, train_acc, test_loss, test_acc=PET(model, examples_11_loader, test_11_loader,bsize=bsize, lr=1e-6)
 
         
 
