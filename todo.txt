@@ -1,8 +1,20 @@
-By order of priority
 
-- train and aggregate with PET k(=3) models/pattern
-- add classical training and compare with it (for the same number of training examples, i.e 32)
-- add priming (REAL few shot learning, works with LARGE SCALE LLMs) and compare with it
+OUTILS PRATIQUES/ERGONOMIQUES A METTRE EN PLACE (avec le argparser):
+
+- model save : dossiers "classical" ou "pattern_idpidv", au sein des dossiers, on devrait avoir:
+    -classical: fichier svg d'un modèle entrainé normalement sur 32 examples  
+    -pattern_idpidv: fichierS de svg de K modèles DISTINCTS entrainés par PET sur ce pvp, numérotés de 1 à K
+    ex: model_1.pth ...model_K.pth
+- compléter pipeline du main pour load des modèles deja entrainés et svg quelquepart et les tester, par
+exemple en vue d'une phase de test d'ensembling de modèles entrainés avec PET (cf dessous)
+
+
+METHODES A AJOUTER:
+
+------------ Dans l'idéal : ------------
+- ensembling de k (ex: k=3) modèles entrainés avec PET pour une phase de test (methode cf papiers, 
+    poids proportionels aux performances de chaque modèle...)
 - implement iPET and observe improvements (?)
-- summarize comparisons with plots, analyze...
+---------- Et si on est bien : ----------
+- add priming (REAL few shot learning, works with LARGE SCALE LLMs) and compare with it
 - eventually: implement PET with several masks
