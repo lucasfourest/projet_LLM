@@ -12,6 +12,7 @@ from pvp import *
 from dataset import *
 from utils import *
 
+
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 class Classifier(nn.Module):

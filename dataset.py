@@ -9,6 +9,7 @@ from transformers import AlbertForMaskedLM, AlbertTokenizer, BertForMaskedLM, Be
 from pvp import *
 from utils import *
 
+
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -24,7 +25,7 @@ class CustomDataset(Dataset):
 
 
     def create_new_data(self,n_samples):
-        samples=self.raw_data.shuffle().select(range(n_samples))
+        samples=self.raw_data.select(range(n_samples))
         tokenized=samples.map(preprocessing_fn , fn_kwargs={"tokenizer":self.tokenizer, "pvp":self.pvp})
         if self.pvp is not None : to_keep=["input_ids","target","labels"]
         else : to_keep=["input_ids","labels"]

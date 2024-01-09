@@ -1,5 +1,6 @@
 
 import argparse
+import os
 import numpy as np
 import torch
 import torch.nn.functional as F
@@ -14,6 +15,11 @@ from pvp import *
 from dataset import *
 from utils import *
 from model import *
+import random
+
+seed_value = 123
+random.seed(seed_value)
+# torch.manual_seed(seed_value)
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -28,8 +34,8 @@ if __name__ == "__main__":
                         help="id of pattern")
     parser.add_argument("--id_v", type=int, default=None, 
                         help="id of pattern")
-    parser.add_argument("--n_models", type=int, default=None, 
-                        help="if PET/iPET, number of models to train per pvp")
+    parser.add_argument("--num_model", type=int, default=None, 
+                        help="if PET/iPET, number identifier of the model to train")
     parser.add_argument("--lr", type=float, default=1e-5, 
                         help="learning rate")
     parser.add_argument("--bsize_train", type=int, default=8, 
@@ -38,15 +44,15 @@ if __name__ == "__main__":
                         help="chosen batch size for testing")
     parser.add_argument("--train",action=argparse.BooleanOptionalAction ,default=True )
     parser.add_argument("--test",action=argparse.BooleanOptionalAction ,default=True )
-    parser.add_argument("--val",action=argparse.BooleanOptionalAction ,default=False,\
-                        help="to activate or not validation during training (32//bsize epochs) and gain time" )
+    parser.add_argument("--eval",action=argparse.BooleanOptionalAction ,default=False,\
+                        help="to activate or not evaluation at end of training and gain time" )
     parser.add_argument("--save",action=argparse.BooleanOptionalAction ,default=False )
 
     args = parser.parse_args()
 
     n_samples=args.n_samples
     raw_data = load_dataset("scikit-learn/imdb", split="train")
-    raw_data=raw_data.shuffle()
+    raw_data=raw_data.shuffle(seed=seed_value)
     model_prefix=args.model
     if model_prefix =='distilbert': 
        model_name="distilbert-base-uncased"
@@ -75,9 +81,24 @@ if __name__ == "__main__":
        if model_prefix=='albert':bert = AlbertModel.from_pretrained(model_name)
        model=Classifier(bert)
 
+    save_path=None
+    if args.save:
+      save_path='models/'
+      if (args.id_p is not None) and (args.id_v is not None):
+         save_path=save_path+'pet_pvp='+str(args.id_p)+str(args.id_v)+'/'
+      else:
+         save_path=save_path+'classic/'
+      if not os.path.exists(save_path):
+         os.makedirs(save_path)
+      num_model=''
+      if args.num_model is not None:
+         num_model=str(args.num_model)
+      save_path=save_path+'model'+num_model+'.pth'
+
 
     # prepare data
     dataset=CustomDataset(tokenizer,raw_data,pvp=pvp,n_samples=n_samples) # normal dataset
+   #  print(dataset.observe(0))
     # train/test split
     examples, test = Subset(dataset, range(32)),Subset(dataset, range(32, len(dataset)))
     # set up loaders
@@ -90,7 +111,7 @@ if __name__ == "__main__":
     
 
     if args.train:
-       train(model, examples_loader, test_loader,bsize=bsize_train, lr=args.lr,save=args.save) 
+       train(model, examples_loader, test_loader,bsize=bsize_train, lr=args.lr,eval=args.eval,save_path=save_path) 
 
     
   

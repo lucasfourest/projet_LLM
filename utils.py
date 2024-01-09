@@ -7,6 +7,7 @@ from datasets import load_dataset
 from tqdm.autonotebook import *
 from transformers import AlbertModel, AlbertTokenizer
 
+
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
@@ -68,7 +69,7 @@ class DataCollator:
 
 # MODEL RELATED METHODS
     
-def train(model, examples_loader, test_loader, bsize=32,lr=1e-4,validation=False,save=False):
+def train(model, examples_loader, test_loader, bsize=32,lr=1e-4,eval=False,save_path=None):
     optimizer = torch.optim.AdamW(
         model.parameters(),
         lr=lr,
@@ -108,29 +109,23 @@ def train(model, examples_loader, test_loader, bsize=32,lr=1e-4,validation=False
         list_train_loss.append(train_loss / len(examples_loader))
         
         if k==n_iter-1: # at the end
-            # ========== test ==========
-            l, a = test(model, test_loader)
-            print("Final :",
-                "\ntrain loss: {:.4f}".format(list_train_loss[-1]),
-                "train acc: {:.4f}".format(list_train_acc[-1]),
-                "test loss: {:.4f}".format(l),
-                "test acc:{:.4f}".format(a * 100),
-            )
-        else:
-            if validation:
-                # ========== valid ==========
+            if eval:
+                # ========== test ==========
                 l, a = test(model, test_loader)
-                print(k,
+                print("Final :",
                     "\ntrain loss: {:.4f}".format(list_train_loss[-1]),
                     "train acc: {:.4f}".format(list_train_acc[-1]),
                     "test loss: {:.4f}".format(l),
                     "test acc:{:.4f}".format(a * 100),
                 )
-            else:
-                print(k,
-                "\ntrain loss: {:.4f}".format(list_train_loss[-1]),
-                "train acc: {:.4f}".format(list_train_acc[-1]),
+        else:
+            
+            print(k,
+            "\ntrain loss: {:.4f}".format(list_train_loss[-1]),
+            "train acc: {:.4f}".format(list_train_acc[-1]),
             )
+    if save_path is not None:
+        torch.save(model.state_dict(), save_path)
 
     return list_train_loss, list_train_acc, list_test_loss, list_test_acc
     
