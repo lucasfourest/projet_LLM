@@ -60,6 +60,7 @@ if __name__ == "__main__":
        print('\n'+'-'*25 + 'Classical test'+'-'*25 )
        pvp=None
     dataset=CustomDataset(tokenizer,raw_data,pvp=pvp,n_samples=n_samples) # normal dataset
+    print(dataset.observe(0))
     # train/test split
     _, test_set = Subset(dataset, range(32)),Subset(dataset, range(32, len(dataset)))
     # set up loaders

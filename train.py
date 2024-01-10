@@ -28,7 +28,9 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='')
     parser.add_argument("--n_samples", type=int, default=1000, 
-                        help="inb of samples to take in initial dataset (too heavy otherwise)")
+                        help="nb of samples to take in initial dataset (too heavy otherwise)")
+    parser.add_argument("--n_examples", type=int, default=32, 
+                        help="nb of training examples")
     parser.add_argument("--model", type=str, choices=['distilbert','bert','albert'],default='distilbert')
     parser.add_argument("--id_p", type=int, default=None, 
                         help="id of pattern")
@@ -101,7 +103,7 @@ if __name__ == "__main__":
     dataset=CustomDataset(tokenizer,raw_data,pvp=pvp,n_samples=n_samples) # normal dataset
    #  print(dataset.observe(0))
     # train/test split
-    examples, test = Subset(dataset, range(32)),Subset(dataset, range(32, len(dataset)))
+    examples, test = Subset(dataset, range(args.n_examples)),Subset(dataset, range(args.n_examples, len(dataset)))
     # set up loaders
     data_collator = DataCollator(dataset.tokenizer)
     bsize_train=args.bsize_train

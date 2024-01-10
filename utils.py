@@ -121,59 +121,58 @@ def train(model, examples_loader, test_loader, bsize=32,lr=1e-4,eval=False,save_
         lr=lr,
         eps=1e-08,
     )
-    list_test_acc = []
-    list_train_acc = []
-    list_train_loss = []
-    list_test_loss = []
+    test_acc = 0
+    train_acc = 0
+    train_loss = 0
+    test_loss = 0
     criterion = nn.BCELoss()
-    n_iter=32//bsize # to do 1 epoch and exactly 32 examples
-    for k in range(n_iter):
-        # ========== Training (32 examples) ==========
-        # Set model to training mode
-        model.train()
-        model.to(DEVICE)
-        train_loss = 0
-        epoch_train_acc = 0
-        for batch in tqdm(examples_loader): # a single 32 batch in examples_loader
-            batch = {k: v.to(DEVICE) for k, v in batch.items()}
-            input_ids, attention_mask, labels = (
-                batch["input_ids"],
-                batch["attention_mask"],
-                batch["labels"],
-            )
-            optimizer.zero_grad()
-            # Forward pass
-            outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-            # Backward pass
-            loss = criterion(outputs.squeeze(), labels.squeeze().float())
-            loss.backward()
-            optimizer.step()
-            train_loss += loss.detach().cpu().item()
-            acc = (outputs.squeeze() > 0.5) == labels.squeeze()
-            epoch_train_acc += acc.float().mean().item()
-        list_train_acc.append(100 * epoch_train_acc / len(examples_loader))
-        list_train_loss.append(train_loss / len(examples_loader))
+
+    # ========== Training (32 examples) ==========
+    # Set model to training mode
+    model.train()
+    model.to(DEVICE)
+    train_loss = 0
+    epoch_train_acc = 0
+    for batch in tqdm(examples_loader): # a single 32 batch in examples_loader
+        batch = {k: v.to(DEVICE) for k, v in batch.items()}
+        input_ids, attention_mask, labels = (
+            batch["input_ids"],
+            batch["attention_mask"],
+            batch["labels"],
+        )
+        optimizer.zero_grad()
+        # Forward pass
+        outputs = model(input_ids=input_ids, attention_mask=attention_mask)
+        # Backward pass
+        loss = criterion(outputs.squeeze(), labels.squeeze().float())
+        loss.backward()
+        optimizer.step()
+        train_loss += loss.detach().cpu().item()
+        acc = (outputs.squeeze() > 0.5) == labels.squeeze()
+        epoch_train_acc += acc.float().mean().item()
+    train_acc=100 * epoch_train_acc / len(examples_loader)
+    train_loss=train_loss / len(examples_loader)
+    
+    # at the end
+    if eval:
+        # ========== test ==========
+        l, a = test(model, test_loader)
+        print("Final :",
+            "\ntrain loss: {:.4f}".format(train_loss),
+            "train acc: {:.4f}".format(train_acc),
+            "test loss: {:.4f}".format(l),
+            "test acc:{:.4f}".format(a * 100),
+        )
+    else:
         
-        if k==n_iter-1: # at the end
-            if eval:
-                # ========== test ==========
-                l, a = test(model, test_loader)
-                print("Final :",
-                    "\ntrain loss: {:.4f}".format(list_train_loss[-1]),
-                    "train acc: {:.4f}".format(list_train_acc[-1]),
-                    "test loss: {:.4f}".format(l),
-                    "test acc:{:.4f}".format(a * 100),
-                )
-        else:
-            
-            print(k,
-            "\ntrain loss: {:.4f}".format(list_train_loss[-1]),
-            "train acc: {:.4f}".format(list_train_acc[-1]),
-            )
+        print(
+        "\ntrain loss: {:.4f}".format(train_loss),
+        "train acc: {:.4f}".format(train_acc),
+        )
     if save_path is not None:
         torch.save(model.state_dict(), save_path)
 
-    return list_train_loss, list_train_acc, list_test_loss, list_test_acc
+    return train_loss, train_acc, test_loss, test_acc
     
 def test(model,test_dataloader):
   total_size=0
