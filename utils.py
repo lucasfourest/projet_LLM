@@ -5,10 +5,56 @@ import torch.nn as nn
 from torch.utils.data import Dataset,DataLoader, Subset
 from datasets import load_dataset
 from tqdm.autonotebook import *
-from transformers import AlbertModel, AlbertTokenizer
+from transformers import AlbertForMaskedLM, AlbertTokenizer, BertForMaskedLM, BertTokenizer, \
+  DistilBertForMaskedLM, DistilBertTokenizer, AlbertModel, BertModel, DistilBertModel
+
 
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+
+# PIPELINE
+
+def get_save_path(args,num_model):
+    save_path='models/'+args.model+'/'
+    if (args.id_p is not None) and (args.id_v is not None):
+        save_path=save_path+'pet_pvp='+str(args.id_p)+str(args.id_v)+'/'
+    else:
+        save_path=save_path+'classic/'
+    if num_model is None:
+        s=''
+    else:
+        s=str(num_model)
+    save_path=save_path+'model'+s+'.pth'
+    return save_path
+
+def create_name_tokenizer(args):
+    model_prefix=args.model
+    if model_prefix =='distilbert': 
+       model_name="distilbert-base-uncased"
+       tokenizer=DistilBertTokenizer.from_pretrained(model_name, do_lower_case=True)
+    if model_prefix =='bert': 
+       model_name="bert-base-uncased"
+       tokenizer=BertTokenizer.from_pretrained(model_name, do_lower_case=True)
+    if model_prefix=='albert':
+       model_name="albert-base-v2"
+       tokenizer=AlbertTokenizer.from_pretrained(model_name, do_lower_case=True) 
+    return model_name, tokenizer
+
+def create_backbone(args,model_name,tokenizer,pvp):
+    model_prefix=args.model
+    if (args.id_p is not None) and (args.id_v is not None) : 
+        if model_prefix=='distilbert':mlm = DistilBertForMaskedLM.from_pretrained(model_name)
+        if model_prefix=='bert': mlm= BertForMaskedLM.from_pretrained(model_name)
+        if model_prefix=='albert':mlm = AlbertForMaskedLM.from_pretrained(model_name)
+        backbone=mlm
+        
+    else :     
+        if model_prefix=='distilbert':bert = DistilBertModel.from_pretrained(model_name)
+        if model_prefix=='bert':bert = BertModel.from_pretrained(model_name)
+        if model_prefix=='albert':bert = AlbertModel.from_pretrained(model_name)
+        backbone=bert
+
+    return backbone
 
 
 # DATA PROCESSING
@@ -149,3 +195,32 @@ def test(model,test_dataloader):
       acc_total+=acc.sum().item()
       loss_total+=loss.item()
   return loss_total/len(test_dataloader),acc_total/total_size
+
+
+def test_ensemble(list_models,test_dataloader):
+  total_size=0
+  acc_total=0
+  loss_total=0
+  criterion=nn.BCELoss()
+  for model in list_models:
+      model.eval()
+  with torch.no_grad():
+    for batch in tqdm(test_dataloader):
+      batch={k:v.to(DEVICE) for k,v in batch.items()}
+      input_ids=batch["input_ids"]
+      labels=batch["labels"]
+      attention_mask=batch["attention_mask"]
+      labels=labels.float()
+      list_preds=[]
+      for model in list_models:
+          preds=model(input_ids=input_ids,attention_mask=attention_mask)
+          list_preds.append(preds)
+      global_pred = torch.stack(list_preds)
+      global_pred= torch.mean(global_pred, dim=0)
+      loss=criterion(global_pred.squeeze(),labels)
+      acc=(global_pred.squeeze()>0.5)==labels
+      total_size+=acc.shape[0]
+      acc_total+=acc.sum().item()
+      loss_total+=loss.item()
+  return loss_total/len(test_dataloader),acc_total/total_size
+
