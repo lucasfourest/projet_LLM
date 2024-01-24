@@ -44,6 +44,10 @@ class Pattern:
             if self.id==1:
                 self.prefix=' Question: '
                 self.suffix='? Answer:'
+
+            if self.id==2:
+                self.prefix=' Based on the previous passage, '
+                self.suffix='?'
             
 
 
@@ -52,7 +56,7 @@ class Pattern:
             x=inputs[0]
             return [self.prefix+x+self.suffix,'']
         if self.dataset=='boolq':
-            if self.id==1:
+            if self.id==1 or self.id==2:
                 p,q=inputs
 
                 return [p+self.prefix+q+self.suffix,'']

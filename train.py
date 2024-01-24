@@ -32,7 +32,7 @@ if __name__ == "__main__":
    #                      help="to perform few shot training" )
    #  parser.add_argument("--normal",action=argparse.BooleanOptionalAction ,default=False,\
    #                      help="to perform normal training" )
-    parser.add_argument("--n_samples", type=int, default=1000, 
+    parser.add_argument("--n_samples", type=int, default=5000, 
                         help="nb of samples to take in initial dataset (too heavy otherwise)")
     parser.add_argument("--n_examples", type=int, default=32, 
                         help="nb of training examples fro few shot training")

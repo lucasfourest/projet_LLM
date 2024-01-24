@@ -70,7 +70,7 @@ class CustomDataset(Dataset):
 if __name__ == "__main__":
 
     n_samples=1000
-    name='imdb'
+    name='boolq'
     raw_data = load_raw_data(name)
     raw_data=raw_data.shuffle(seed=seed_value)
     print(raw_data)
