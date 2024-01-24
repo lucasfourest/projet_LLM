@@ -9,24 +9,32 @@ from transformers import AlbertForMaskedLM, AlbertTokenizer, BertForMaskedLM, Be
 from pvp import *
 from utils import *
 
+import random
+seed_value = 123
+random.seed(seed_value)
+
 
 DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 
 class CustomDataset(Dataset):
-    def __init__(self,tokenizer,raw_data,pvp=None,n_samples=5000):
+    def __init__(self,tokenizer,raw_data,pvp=None,n_samples=5000,name='imdb'):
+        self.name=name
         self.tokenizer= tokenizer
         self.raw_data=raw_data
         self.pvp=pvp
         self.dataset=self.create_new_data(n_samples)
-        pass
+
 
 
 
     def create_new_data(self,n_samples):
         samples=self.raw_data.select(range(n_samples))
-        tokenized=samples.map(preprocessing_fn , fn_kwargs={"tokenizer":self.tokenizer, "pvp":self.pvp})
+        if self.name=='imdb':samples.map(lambda dic: {'review': process_text(dic['review'])})
+        if self.name=='boolq':samples.map(lambda dic: {'passage': process_text(dic['passage'])\
+                                   ,'question': process_text(dic['question'])                    } )
+        tokenized=samples.map(preprocessing_func , fn_kwargs={"name":self.name,"tokenizer":self.tokenizer, "pvp":self.pvp})
         if self.pvp is not None : to_keep=["input_ids","target","labels"]
         else : to_keep=["input_ids","labels"]
         tokenized = tokenized.select_columns(to_keep)
@@ -62,12 +70,15 @@ class CustomDataset(Dataset):
 if __name__ == "__main__":
 
     n_samples=1000
-    raw_data = load_dataset("scikit-learn/imdb", split="train")
-    raw_data=raw_data.shuffle()
+    name='imdb'
+    raw_data = load_raw_data(name)
+    raw_data=raw_data.shuffle(seed=seed_value)
+    print(raw_data)
+
     tokenizer=DistilBertTokenizer.from_pretrained("distilbert-base-uncased", do_lower_case=True)
-    dataset=CustomDataset(tokenizer,raw_data,pvp=None,n_samples=n_samples) # normal dataset
-    pvp=PVP(1,1)
-    dataset_11=CustomDataset(tokenizer,raw_data,pvp=pvp,n_samples=n_samples)
+    dataset=CustomDataset(tokenizer,raw_data,pvp=None,n_samples=n_samples,name=name) # normal dataset
+    pvp=PVP(1,1,dataset=name)
+    dataset_11=CustomDataset(tokenizer,raw_data,pvp=pvp,n_samples=n_samples,name=name)
     
     # test if both datasets are correct
     print('-'*25 + 'Normal Dataset'+'-'*25 )

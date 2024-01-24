@@ -27,10 +27,9 @@ DEVICE = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='')
-    parser.add_argument("--single",action=argparse.BooleanOptionalAction ,default=False,\
-                        help="to test a single model" )
     parser.add_argument("--n_samples", type=int, default=1000, 
                         help="inb of samples to take in initial dataset (too heavy otherwise)")
+    parser.add_argument("--dataset", type=str,default='imdb', choices=['imdb', 'boolq'])
     parser.add_argument("--model", type=str, choices=['distilbert','bert','albert'],default='distilbert')
     parser.add_argument("--id_p", type=int, default=None, 
                         help="id of pattern")
@@ -47,7 +46,8 @@ if __name__ == "__main__":
 
 
     n_samples=args.n_samples
-    raw_data = load_dataset("scikit-learn/imdb", split="train")
+    ds_name=args.dataset
+    raw_data = load_raw_data(ds_name)
     raw_data=raw_data.shuffle(seed=seed_value)
     model_name,tokenizer=create_name_tokenizer(args)
 
@@ -55,12 +55,12 @@ if __name__ == "__main__":
     if (args.id_p is not None) and (args.id_v is not None) :
        print('\n'+'-'*25 + 'Pattern Exploiting test'+'-'*25 ) 
        print(f'id pattern = {args.id_p}, id verbalizer = {args.id_v}')
-       pvp=PVP(args.id_p,args.id_v)
+       pvp=PVP(args.id_p,args.id_v, dataset=ds_name)
     else:
        print('\n'+'-'*25 + 'Classical test'+'-'*25 )
        pvp=None
-    dataset=CustomDataset(tokenizer,raw_data,pvp=pvp,n_samples=n_samples) # normal dataset
-    print(dataset.observe(0))
+    dataset=CustomDataset(tokenizer,raw_data,pvp=pvp,n_samples=n_samples, name=ds_name) # normal dataset
+   #  print(dataset.observe(0))
     # train/test split
     _, test_set = Subset(dataset, range(32)),Subset(dataset, range(32, len(dataset)))
     # set up loaders
@@ -72,7 +72,7 @@ if __name__ == "__main__":
 
       save_path=get_save_path(args,args.num_model)
 
-      backbone=create_backbone(args,model_name,tokenizer,pvp)
+      backbone=create_backbone(args,model_name)
       if (args.id_p is not None) and (args.id_v is not None):model=PETClassifier(backbone,tokenizer,pvp)
       else:model=Classifier(backbone)
       model.load_state_dict(torch.load(save_path))
