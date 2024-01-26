@@ -58,50 +58,5 @@ class PETClassifier(nn.Module):
 
 
 
-if __name__ == "__main__":
-
-    n_samples=1000
-    raw_data = load_dataset("scikit-learn/imdb", split="train")
-    raw_data=raw_data.shuffle()
-    model_name = "distilbert-base-uncased" 
-    # model_name = "bert-base-uncased" 
-    # model_name = "albert-base-v1" 
-    tokenizer=DistilBertTokenizer.from_pretrained(model_name, do_lower_case=True)
-    # tokenizer=BertTokenizer.from_pretrained(model_name, do_lower_case=True)
-    # tokenizer=AlbertTokenizer.from_pretrained(model_name, do_lower_case=True)
-    pvp=PVP(1,1)
-
-
-    # prepare data
-    dataset=CustomDataset(tokenizer,raw_data,pvp=None,n_samples=n_samples) # normal dataset
-    dataset_11=CustomDataset(tokenizer,raw_data,pvp,n_samples=n_samples) # specific pvp dataset
-    # train/test split
-    examples, test = Subset(dataset, range(32)),Subset(dataset, range(32, len(dataset)))
-    examples_11, test_11 = Subset(dataset_11, range(32)),Subset(dataset_11, range(32, len(dataset_11)))
-    # set up loaders
-    data_collator = DataCollator(dataset_11.tokenizer)
-    bsize=8
-    examples_loader = DataLoader(examples, batch_size=bsize, collate_fn=data_collator) # train for 1 batch
-    test_loader = DataLoader(test, batch_size=32, collate_fn=data_collator)
-    examples_11_loader = DataLoader(examples_11, batch_size=bsize, collate_fn=data_collator) # train for 1 batch
-    test_11_loader = DataLoader(test_11, batch_size=32, collate_fn=data_collator)
-
-
-    # prepare normal classifier model 
-    bert = DistilBertModel.from_pretrained(model_name)
-    # bert = BertModel.from_pretrained(model_name)
-    # bert = AlbertModel.from_pretrained(model_name)
-    model=Classifier(bert)
-    print('\n'+'-'*25 + 'Normal Training'+'-'*25 )
-    train(model, examples_loader, test_loader,bsize=bsize, lr=1e-5) # normal training with 32 examples
-    
-
-    # prepare PET model 
-    mlm = DistilBertForMaskedLM.from_pretrained(model_name)
-    # mlm = BertForMaskedLM.from_pretrained(model_name)
-    # mlm = AlbertForMaskedLM.from_pretrained(model_name)
-    model=PETClassifier(mlm,tokenizer,pvp)
-    print('\n'+'-'*25 + 'PE Training'+'-'*25 )
-    train(model, examples_11_loader, test_11_loader,bsize=bsize, lr=1e-6) # PET with 32 examples     
 
     
