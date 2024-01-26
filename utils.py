@@ -111,7 +111,6 @@ def preprocessing_func(x, tokenizer,pvp, name ='imdb'):
             else:
                 transformed_data["input_ids"]=before_tok+[tokenizer.mask_token_id] +after_tok
             
-            # transformed_data["input_ids"]=[tokenizer.cls_token_id]+transformed_data["input_ids"]+[tokenizer.mask_token_id,tokenizer.sep_token_id]
             transformed_data["target"]=tokenizer(
                 verbalized_label,
                 add_special_tokens=False,
@@ -162,7 +161,6 @@ def preprocessing_func(x, tokenizer,pvp, name ='imdb'):
             else:
                 transformed_data["input_ids"]=before_tok+[tokenizer.mask_token_id] +after_tok
             
-            # transformed_data["input_ids"]=[tokenizer.cls_token_id]+transformed_data["input_ids"]+[tokenizer.mask_token_id,tokenizer.sep_token_id]
             transformed_data["target"]=tokenizer(
                 verbalized_label,
                 add_special_tokens=False,
@@ -190,7 +188,6 @@ class DataCollator:
         self.tokenizer = tokenizer
 
     def __call__(self, batch):
-        # `batch` is a list of dictionary with keys "review_ids" and "label".
         features = self.tokenizer.pad(
             batch, padding="longest", max_length=512, return_tensors="pt"
         )
@@ -219,7 +216,7 @@ def train(model, examples_loader, test_loader,n_epochs=1,lr=1e-4,eval_every=None
         model.to(DEVICE)
         train_loss = 0
         epoch_train_acc = 0
-        for batch in tqdm(examples_loader): # a single 32 batch in examples_loader
+        for batch in tqdm(examples_loader): 
             batch = {k: v.to(DEVICE) for k, v in batch.items()}
             input_ids, attention_mask, labels = (
                 batch["input_ids"],
@@ -240,7 +237,6 @@ def train(model, examples_loader, test_loader,n_epochs=1,lr=1e-4,eval_every=None
         list_train_acc.append(100 * epoch_train_acc / len(examples_loader))
         list_train_loss.append(train_loss / len(examples_loader))
     
-        # at the end
         if eval_every is not None:
             if (epoch+1)%eval_every==0:
                 # ========== test ==========
