@@ -23,9 +23,7 @@ def load_raw_data(ds_name):
         raw_data=load_dataset("super_glue", "boolq", split='train')
     return raw_data
 
-def get_save_path(args,num_model):
-    few_shot=(args.id_p is not None) and (args.id_v is not None)
-    normal = not few_shot
+def get_save_path(args):
     save_path='models/'+args.model+'/'+args.dataset+'/'
     if (args.id_p is not None) and (args.id_v is not None):
         save_path=save_path+'pet_pvp='+str(args.id_p)+str(args.id_v)+'/'
@@ -33,14 +31,10 @@ def get_save_path(args,num_model):
         save_path=save_path+'classic/'
     if not os.path.exists(save_path):
          os.makedirs(save_path)
-    if normal:p='normal_'
-    if few_shot:p='few_shot_'
-    if num_model is None:
-        s=''
-    else:
-        s=str(num_model)
-    save_path=save_path+p+'model'+s+'.pth'
+    save_path=save_path+'model.pth'
     return save_path
+
+    
 
 def create_name_tokenizer(args):
     model_prefix=args.model
@@ -55,9 +49,9 @@ def create_name_tokenizer(args):
        tokenizer=AlbertTokenizer.from_pretrained(model_name, do_lower_case=True) 
     return model_name, tokenizer
 
-def create_backbone(args,model_name):
+def create_backbone(args,model_name,id_p=None, id_v=None):
     model_prefix=args.model
-    if (args.id_p is not None) and (args.id_v is not None) : 
+    if (id_p is not None) and (id_v is not None) : 
         if model_prefix=='distilbert':mlm = DistilBertForMaskedLM.from_pretrained(model_name)
         if model_prefix=='bert': mlm= BertForMaskedLM.from_pretrained(model_name)
         if model_prefix=='albert':mlm = AlbertForMaskedLM.from_pretrained(model_name)
@@ -73,16 +67,6 @@ def create_backbone(args,model_name):
 
 
 # DATA PROCESSING
-
-# def process_text(dic):
-#     x=dic['review']
-#     x = re.sub('[,\.!?:()"]', '', x)
-#     x = re.sub('<.*?>', ' ', x)
-#     x = re.sub('http\S+', ' ', x)
-#     x = re.sub('[^a-zA-Z0-9]', ' ', x)
-#     x = re.sub('\s+', ' ', x)
-#     dic['review']=x.lower().strip()
-#     return dic
 
 def process_text(txt):
     x = re.sub('[,\.!?:()"]', '', txt)
@@ -217,66 +201,6 @@ class DataCollator:
 
 # MODEL RELATED METHODS
     
-# def train_few_shot(model, examples_loader, test_loader,lr=1e-4,eval=False,save_path=None):
-#     optimizer = torch.optim.AdamW(
-#         model.parameters(),
-#         lr=lr,
-#         eps=1e-08,
-#     )
-#     test_acc = 0
-#     train_acc = 0
-#     train_loss = 0
-#     test_loss = 0
-#     criterion = nn.BCELoss()
-
-#     # ========== Training (32 examples) ==========
-#     # Set model to training mode
-#     model.train()
-#     model.to(DEVICE)
-#     train_loss = 0
-#     epoch_train_acc = 0
-#     for batch in tqdm(examples_loader): # a single 32 batch in examples_loader
-#         batch = {k: v.to(DEVICE) for k, v in batch.items()}
-#         input_ids, attention_mask, labels = (
-#             batch["input_ids"],
-#             batch["attention_mask"],
-#             batch["labels"],
-#         )
-#         optimizer.zero_grad()
-#         # Forward pass
-#         outputs = model(input_ids=input_ids, attention_mask=attention_mask)
-#         # Backward pass
-#         loss = criterion(outputs.squeeze(), labels.squeeze().float())
-#         loss.backward()
-#         optimizer.step()
-#         train_loss += loss.detach().cpu().item()
-#         acc = (outputs.squeeze() > 0.5) == labels.squeeze()
-#         epoch_train_acc += acc.float().mean().item()
-#     train_acc=100 * epoch_train_acc / len(examples_loader)
-#     train_loss=train_loss / len(examples_loader)
-    
-#     # at the end
-#     if eval:
-#         # ========== test ==========
-#         l, a = test(model, test_loader)
-#         print("Final :",
-#             "\ntrain loss: {:.4f}".format(train_loss),
-#             "train acc: {:.4f}".format(train_acc),
-#             "test loss: {:.4f}".format(l),
-#             "test acc:{:.4f}".format(a * 100),
-#         )
-#     else:
-        
-#         print(
-#         "\ntrain loss: {:.4f}".format(train_loss),
-#         "train acc: {:.4f}".format(train_acc),
-#         )
-#     if save_path is not None:
-#         torch.save(model.state_dict(), save_path)
-
-#     return train_loss, train_acc, test_loss, test_acc
-
-
 def train(model, examples_loader, test_loader,n_epochs=1,lr=1e-4,eval_every=None,save_path=None):
     optimizer = torch.optim.AdamW(
         model.parameters(),
@@ -302,6 +226,7 @@ def train(model, examples_loader, test_loader,n_epochs=1,lr=1e-4,eval_every=None
                 batch["attention_mask"],
                 batch["labels"],
             )
+
             optimizer.zero_grad()
             # Forward pass
             outputs = model(input_ids=input_ids, attention_mask=attention_mask)
@@ -362,17 +287,18 @@ def test(model,test_dataloader):
       labels=labels.float()
       preds=model(input_ids=input_ids,attention_mask=attention_mask)
       loss=criterion(preds.squeeze(),labels)
-      acc=(preds.squeeze()>0.5)==labels
+      acc=(preds.squeeze()>0.5)==labels.squeeze()
       total_size+=acc.shape[0]
       acc_total+=acc.sum().item()
       loss_total+=loss.item()
   return loss_total/len(test_dataloader),acc_total/total_size
 
 
-def test_ensemble(list_models,test_dataloader):
+def test_ensemble(list_models,list_weigths,test_dataloader):
   total_size=0
   acc_total=0
   loss_total=0
+  weights_tensor=torch.tensor(list_weigths).to(DEVICE)
   criterion=nn.BCELoss()
   for model in list_models:
       model.eval()
@@ -383,16 +309,31 @@ def test_ensemble(list_models,test_dataloader):
       labels=batch["labels"]
       attention_mask=batch["attention_mask"]
       labels=labels.float()
-      list_preds=[]
-      for model in list_models:
-          preds=model(input_ids=input_ids,attention_mask=attention_mask)
-          list_preds.append(preds)
-      global_pred = torch.stack(list_preds)
-      global_pred= torch.mean(global_pred, dim=0)
+      
+      global_pred=make_ensemble_pred(list_models,weights_tensor, input_ids, attention_mask, labels)
       loss=criterion(global_pred.squeeze(),labels)
-      acc=(global_pred.squeeze()>0.5)==labels
+      acc=(global_pred.squeeze()>0.5)==labels.squeeze()
       total_size+=acc.shape[0]
       acc_total+=acc.sum().item()
       loss_total+=loss.item()
   return loss_total/len(test_dataloader),acc_total/total_size
+
+
+def make_ensemble_pred(list_models,weights_tensor, input_ids, attention_mask, labels):
+
+    
+    list_scores_pos=[]
+    list_scores_neg=[]
+    for model in list_models:
+        scores_pos_neg=model.get_scores(input_ids=input_ids,attention_mask=attention_mask)
+        scores_pos, scores_neg=scores_pos_neg[:,0],scores_pos_neg[:,1]
+        list_scores_pos.append(scores_pos),list_scores_neg.append(scores_neg)
+    global_scores_pos,global_scores_neg = torch.stack(list_scores_pos),torch.stack(list_scores_neg)
+    weighted_pos=weights_tensor[:,None]*global_scores_pos
+    weighted_neg=weights_tensor[:,None]*global_scores_neg
+    w_sum_pos, w_sum_neg=torch.sum(weighted_pos,dim=0),torch.sum(weighted_neg,dim=0)
+    w_sum=torch.cat((w_sum_pos.unsqueeze(-1), w_sum_neg.unsqueeze(-1)), dim=1)
+    probs=F.softmax(w_sum, dim=1)
+    global_pred=probs[:,0]
+    return global_pred
 

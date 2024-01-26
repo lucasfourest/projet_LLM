@@ -41,14 +41,19 @@ class PETClassifier(nn.Module):
       self.id_pos, self.id_neg=self.tokenizer.encode(pvp.verbalizer.answer_pos,add_special_tokens=False,),\
                                 self.tokenizer.encode(pvp.verbalizer.answer_neg,add_special_tokens=False,)
 
-    def forward(self, input_ids, attention_mask, **kwargs):
-      output_logits=self.mlm(input_ids=input_ids,attention_mask=attention_mask)['logits']
-      masked_idx=(input_ids == self.tokenizer.mask_token_id)[0]
-      scores=output_logits[:,masked_idx,:].squeeze() # scores (for whole vocabulary) at masked position in P(x) (pattern)
-      score_pos,score_neg=scores[:,self.id_pos],scores[:,self.id_neg]
-      restr_scores=torch.cat((score_pos,score_neg),dim=1) # scores of v(1) and v(0) at masked pos
+    def get_scores(self, input_ids, attention_mask):
+       output_logits=self.mlm(input_ids=input_ids,attention_mask=attention_mask)['logits']
+       masked_idx=(input_ids == self.tokenizer.mask_token_id)[0]
+       scores=output_logits[:,masked_idx,:].squeeze() # scores (for whole vocabulary) at masked position in P(x) (pattern)
+       score_pos,score_neg=scores[:,self.id_pos],scores[:,self.id_neg]
+       restr_scores=torch.cat((score_pos,score_neg),dim=1)
+       return restr_scores
+
+    def forward(self, input_ids, attention_mask):
+      restr_scores=self.get_scores(input_ids, attention_mask) # scores of v(1) and v(0) at masked pos
       prob=F.softmax(restr_scores, dim=1)
-      return prob[:,0] # as binary classif, return proba of each ex to be pos (other one is just 1 - ...)
+      to_return=prob[:,0]
+      return to_return # as binary classif, return proba of each ex to be pos (other one is just 1 - ...)
     
 
 

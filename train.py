@@ -28,21 +28,14 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(description='')
     parser.add_argument("--dataset", type=str,default='imdb', choices=['imdb', 'boolq'])
-   #  parser.add_argument("--few_shot",action=argparse.BooleanOptionalAction ,default=False,\
-   #                      help="to perform few shot training" )
-   #  parser.add_argument("--normal",action=argparse.BooleanOptionalAction ,default=False,\
-   #                      help="to perform normal training" )
     parser.add_argument("--n_samples", type=int, default=5000, 
                         help="nb of samples to take in initial dataset (too heavy otherwise)")
-    parser.add_argument("--n_examples", type=int, default=32, 
-                        help="nb of training examples fro few shot training")
+    parser.add_argument("--n_examples", type=int, default=32, help="nb of examples")
     parser.add_argument("--model", type=str, choices=['distilbert','bert','albert'],default='distilbert')
     parser.add_argument("--id_p", type=int, default=None, 
                         help="id of pattern")
     parser.add_argument("--id_v", type=int, default=None, 
                         help="id of pattern")
-    parser.add_argument("--num_model", type=int, default=None, 
-                        help="if PET/iPET, number identifier of the model to train")
     parser.add_argument("--lr", type=float, default=1e-5, 
                         help="learning rate")
     parser.add_argument("--n_epochs", type=int, default=1, 
@@ -59,16 +52,16 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    few_shot=(args.id_p is not None) and (args.id_v is not None)
-    normal = not few_shot
+    pet=(args.id_p is not None) and (args.id_v is not None)
+    normal = not pet
     n_samples=args.n_samples
     ds_name=args.dataset
     raw_data = load_raw_data(ds_name)
     raw_data=raw_data.shuffle(seed=seed_value)
     
     model_name,tokenizer=create_name_tokenizer(args)
-    save_path=get_save_path(args,args.num_model)
-    backbone=create_backbone(args,model_name)
+    save_path=get_save_path(args)
+    backbone=create_backbone(args,model_name, id_p=args.id_p, id_v=args.id_v)
 
     if (args.id_p is not None) and (args.id_v is not None) : 
        print('\n'+'-'*25 + 'Pattern Exploiting train'+'-'*25 )
@@ -81,7 +74,6 @@ if __name__ == "__main__":
        pvp=None
        bert=backbone
        model=Classifier(bert)
-
     
 
     if normal:
@@ -101,7 +93,7 @@ if __name__ == "__main__":
       train(model, examples_loader, test_loader,n_epochs=args.n_epochs, lr=args.lr,eval_every=args.eval_every,save_path=save_path)  
    
 
-    if few_shot:
+    if pet:
        # prepare data
       dataset=CustomDataset(tokenizer,raw_data,pvp=pvp,n_samples=n_samples, name=ds_name) # normal dataset
       # train/test split

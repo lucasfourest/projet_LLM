@@ -29,15 +29,15 @@ class Pattern:
             if self.id==3:
                 self.prefix='Read the following review: '
                 self.suffix=' Did this user enjoy its experience?'
-            # if self.id==4:
-            #     self.prefix='the review is: "'
-            #     self.suffix='". Is it a positive review?'
-            # if self.id==5:
-            #     self.prefix='"'
-            #     self.suffix='". Did this user like this movie?'
-            # if self.id==6:
-            #     self.prefix='Read the following review: "'
-            #     self.suffix='". Did this user enjoy its experience?'
+            if self.id==4:
+                self.prefix='the review is: "'
+                self.suffix='". Is it a positive review?'
+            if self.id==5:
+                self.prefix='"'
+                self.suffix='". Did this user like this movie?'
+            if self.id==6:
+                self.prefix='Read the following review: "'
+                self.suffix='". Did this user enjoy its experience?'
         
         if self.dataset=='boolq':
 
@@ -48,6 +48,11 @@ class Pattern:
             if self.id==2:
                 self.prefix=' Based on the previous passage, '
                 self.suffix='?'
+
+            if self.id==3:
+                self.prefix='Based on the following passage, '
+                self.suffix='?'
+            
             
 
 
@@ -56,10 +61,11 @@ class Pattern:
             x=inputs[0]
             return [self.prefix+x+self.suffix,'']
         if self.dataset=='boolq':
+            p,q=inputs
             if self.id==1 or self.id==2:
-                p,q=inputs
-
                 return [p+self.prefix+q+self.suffix,'']
+            if self.id==3:
+                return [self.prefix+q+self.suffix,p]
 
 
 class Verbalizer:
